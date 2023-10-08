@@ -31,43 +31,64 @@ def get_stock_data(ticker):
 if selected == "Prediction":
     st.title("Predictor")
     ticker = st.selectbox("Pick any stock or index to predict:" ,
-        ("BTC-USD.NS","APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
         "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
-        "TECHM.NS","HDFCLIFE.NS"))
+        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
+        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
+        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
+        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
+    
     
     if st.button('Predict'):
         df = get_stock_data(ticker)
         ## ------------------------------- PREDICTION LOGIC -------------------------------
+        # Data Cleaning
+        mean = df['open'].mean()
+        df['open'] = df['open'].fillna(mean)
 
-        df = df[['Open', 'High', 'Low', 'Adj Close', 'Volume']]
-        df['HL_PCT'] = (df['High'] - df['Adj Close']) / df['Adj Close'] * 100
-        df['PCT_change'] = (df['Adj Close'] - df['Open']) / df['Open'] * 100
-        df = df[['Adj Close', 'HL_PCT', 'PCT_change', 'Volume']]
-        forecast_col = 'Adj Close'
-        df.fillna(-99999, inplace=True)
-        forecast_out = int(math.ceil(0.0001*len(df)))
-        df['label'] = df[forecast_col].shift(-forecast_out)
-        df.dropna(inplace=True)
-        x = np.array(df.drop(['label'],1))
-        y = np.array(df['label'])
-        x = preprocessing.scale(x)
-        x_lately = x[-forecast_out:]
-        y = np.array(df['label'])
+        mean = df['high'].mean()
+        df['high'] = df['high'].fillna(mean)
 
+        mean = df['low'].mean()
+        df['low'] = df['low'].fillna(mean)
+
+        mean = df['close'].mean()
+        df['close'] = df['close'].fillna(mean)
+
+        X = df[['open','high','low']]
+        y = df['close'].values.reshape(-1,1)
+        
         #Splitting our dataset to Training and Testing dataset
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
-
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
         #Fitting Linear Regression to the training set
-        clf = LinearRegression(n_jobs=-1)
-        clf.fit(x_train, y_train)
-
+        from sklearn.linear_model import LinearRegression
+        reg = LinearRegression()
+        reg.fit(X_train, y_train)
+        
         #predicting the Test set result
-        acc = clf.score(x_test, y_test)
-        forecast_set = clf.predict(x_lately)
+        y_pred = reg.predict(X_test)
+        o = df['open'].values
+        h = df['high'].values
+        l = df['low'].values
 
-        #showing predicted results
+        n = len(df)
+        
+        pred = []
+        for i in range(0,n):
+            open = o[i]
+            high = h[i]
+            low = l[i]
+            output = reg.predict([[open,high,low]])
+            pred.append(output)
+
+        pred1 = np.concatenate(pred)
+        predicted = pred1.flatten().tolist()
+
+        t = predicted[-1]
         st.subheader("Your latest predicted closing price is: ")
-        st.title(forecast_set)
+        st.title(t)
 
     st.write('You selected:', ticker)
 
@@ -75,78 +96,62 @@ if selected == "Prediction":
 ##------------------------------- DATA VISUALIZATION -------------------------------
 elif selected == "Visualization":
     ticker = st.selectbox("Pick any stock or index to predict:" ,
-        ("BTC-USD.NS"))
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
+        "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
+        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
+        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
+        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
+        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     if st.button('Show Dataframe'):
         st.dataframe(get_stock_data(ticker))
-
-    style.use('ggplot')
-    df = pd.read_csv('BTC-USD.csv', index_col='Date', parse_dates=True)
-    df['Forecast'] = np.nan
-    last_date = df.iloc[-1].name
-    last_unix = last_date.timestamp()
-    one_day = 86400
-    next_unix = last_unix + one_day    
-
-    for i in forecast_set:
-        next_date = datetime.datetime.fromtimestamp(next_unix)
-        next_unix += one_day
-        df.loc[next_date] = [np.nan for _ in range(len(df.columns)-1)] + [i]
-
-    rcParams['figure.figsize']=15,5
-
-    df['Adj Close'].plot()
-    df['Forecast'].plot()
-    plt.legend(loc=4)
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    plt.show()
 
 
 ##------------------------------- ACCURACY -------------------------------
 elif selected == "Accuracy":
     st.title("Accuracy Evaluation Metrics")
     ticker = st.selectbox("Pick any stock or index to predict:" ,
-        ("BTC-USD.NS","APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
         "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
-        "TECHM.NS","HDFCLIFE.NS"))
+        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
+        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
+        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
+        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     df = get_stock_data(ticker)
 
-    df = df[['Open', 'High', 'Low', 'Adj Close', 'Volume']]
-    df['HL_PCT'] = (df['High'] - df['Adj Close']) / df['Adj Close'] * 100
-    df['PCT_change'] = (df['Adj Close'] - df['Open']) / df['Open'] * 100
-    df = df[['Adj Close', 'HL_PCT', 'PCT_change', 'Volume']]
-    forecast_col = 'Adj Close'
-    df.fillna(-99999, inplace=True)
-    forecast_out = int(math.ceil(0.0001*len(df)))
-    df['label'] = df[forecast_col].shift(-forecast_out)
-    df.dropna(inplace=True)
-    x = np.array(df.drop(['label'],1))
-    y = np.array(df['label'])
-    x = preprocessing.scale(x)
-    x_lately = x[-forecast_out:]
-    y = np.array(df['label'])
+    mean = df['open'].mean()
+    df['open'] = df['open'].fillna(mean)
 
+    mean = df['high'].mean()
+    df['high'] = df['high'].fillna(mean)
+
+    mean = df['low'].mean()
+    df['low'] = df['low'].fillna(mean)
+
+    mean = df['close'].mean()
+    df['close'] = df['close'].fillna(mean)
+
+    X = df[['open','high','low']]
+    y = df['close'].values.reshape(-1,1)
+    
     #Splitting our dataset to Training and Testing dataset
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
-
+    from sklearn.model_selection import train_test_split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
     #Fitting Linear Regression to the training set
-    clf = LinearRegression(n_jobs=-1)
-    clf.fit(x_train, y_train)
+    from sklearn.linear_model import LinearRegression
+    reg = LinearRegression()
+    reg.fit(X_train, y_train)
 
-    #Predicting the Test set result
-    forecast_set = clf.predict(x_lately)
-
+    y_pred = reg.predict(X_test)
     #Evaluating the model
     import sklearn.metrics as metrics
-    acc = clf.score(x_test, y_test)
-    r2 = metrics.r2_score(y_test, forecast_set)
-    mae = metrics.mean_absolute_error(y_test, forecast_set)
-    mse = metrics.mean_squared_error(y_test, forecast_set)
+    r2 = metrics.r2_score(y_test, y_pred)
+    mae = metrics.mean_absolute_error(y_test, y_pred)
+    mse = metrics.mean_squared_error(y_test, y_pred)
     rmse = mse**0.5
     
     col1, col2 = st.columns(2)
     
-    col1.metric("Accuracy", acc, "±0.5%")
     col1.metric("R2 Score", r2, "±5%")
     col2.metric("Mean Absolute Error ", mae, "± 5%")
     col1.metric("Mean Squared Error", mse, "± 5%")
