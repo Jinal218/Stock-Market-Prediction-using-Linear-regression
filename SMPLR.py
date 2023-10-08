@@ -104,6 +104,7 @@ elif selected == "Visualization":
         "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     if st.button('Show Dataframe'):
         st.dataframe(get_stock_data(ticker))
+        
 
 
 ##------------------------------- ACCURACY -------------------------------
